@@ -20,26 +20,31 @@ import { normalize } from 'upath';
 
 // 获取需要注入的组件
 const getInjectComponents = (globalConfig, pageConfig) => {
-    const targetPath = join('src', TARGET_DIR_NAME)
-    const components = readdirSync(targetPath).filter(component => (!COMPONENT_IGNORE[component] && component != VERSION_FILE_NAME))
+    let targetPath = join('src', TARGET_DIR_NAME)
+    let components = readdirSync(targetPath).filter(component => (!COMPONENT_IGNORE[component] && component != VERSION_FILE_NAME))
 
-    const globalInject = globalConfig.inject ? components : [];
-    if (typeof globalConfig.inject !== 'boolean')
+    let globalInject = globalConfig.inject ? components : [];
+    if (typeof globalConfig.inject !== "boolean" && globalConfig.inject instanceof Array) {
         globalInject = globalConfig.inject;
-
-        const pageInject = pageConfig.wux;
-    return pageInject ? pageInject : globalInject;
+    }
+  
+    let wuxConfig;
+    if (pageConfig.hasOwnProperty("wux")) {
+        wuxConfig = pageConfig.wux;
+        delete pageConfig.wux;
+    }
+    return [...new Set(globalInject.concat(wuxConfig))].filter(component => component);
 }
 
 const injectComponents = (op, setting) => {
-    const filter = getPageConfigFilter(setting.pagePath);
+    let filter = getPageConfigFilter(setting.pagePath);
     if (filter.test(op.file) && op.type === 'config') {
-        const globalConfig = setting.config;
-        const pageConfig = JSON.parse(op.code);
+        let globalConfig = setting.config;
+        let pageConfig = JSON.parse(op.code);
 
         // 将组件注入到json的usingComponents中
-        const injectComponents = getInjectComponents(globalConfig, pageConfig); // 获取要注入的组件
-        const relativePath = relative(dirname(op.file), resolve('dist/')); // 获取相对的路径
+        let injectComponents = getInjectComponents(globalConfig, pageConfig); // 获取要注入的组件
+        let relativePath = relative(dirname(op.file), resolve('dist/')); // 获取相对的路径
         pageConfig.usingComponents = pageConfig.usingComponents || {};
         injectComponents.forEach(component => (pageConfig.usingComponents[globalConfig.prefix + component] = normalize(relativePath) + '/' + TARGET_DIR_NAME + '/' + component + '/index'))
 
